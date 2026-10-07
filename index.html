@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>영어·스페인어·한국어 한 줄 사전</title>
+<style>
+  :root{
+    --ink:#26241F; --ink-soft:#6E695F; --bg:#F6F3EA; --surface:#FFFFFF; --line:#E7E1D2;
+    --en:#2B6A8C; --es:#B4512A; --ko:#3F7A4A; --warn:#B23A3A; --accent:#26241F;
+    --en-bg:#EAF3F8; --es-bg:#FBEFE8; --ko-bg:#EBF4EC;
+    --radius:16px; --shadow:0 1px 2px rgba(60,50,30,.06), 0 6px 20px rgba(60,50,30,.05);
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{
+    margin:0; background:var(--bg); color:var(--ink); line-height:1.5;
+    font-family:-apple-system,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  }
+  .page{ max-width:1120px; margin:0 auto; padding:20px 20px 48px; }
+  .sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  button{ font-family:inherit; font-size:14px; font-weight:700; cursor:pointer; border-radius:999px; }
+  :focus-visible{ outline:2px solid var(--en); outline-offset:2px; }
+
+  /* ── 상단: 제목 + 검색바 ───────────────────────── */
+  .top{ margin-bottom:20px; }
+  .brandrow{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; flex-wrap:wrap; }
+  h1{ font-size:20px; margin:0; letter-spacing:-.2px; display:flex; align-items:center; gap:8px; }
+  h1 .dots{ display:inline-flex; gap:4px; }
+  h1 .dots i{ width:10px; height:10px; border-radius:50%; display:block; }
+  .engine{ display:flex; align-items:center; gap:6px; font-size:12px; color:var(--ink-soft); }
+  .engine select{ font:inherit; font-size:12px; padding:4px 8px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--ink); }
+
+  .search{
+    display:flex; gap:8px; background:var(--surface); border:1px solid var(--line); border-radius:999px;
+    padding:6px 6px 6px 18px; box-shadow:var(--shadow); align-items:center;
+  }
+  .search:focus-within{ border-color:var(--en); box-shadow:0 0 0 3px rgba(43,106,140,.15), var(--shadow); }
+  .search input[type=text]{
+    flex:1; min-width:0; border:none; outline:none; background:transparent; font:inherit; font-size:17px; color:var(--ink); padding:8px 0;
+  }
+  .search select{
+    border:none; background:var(--bg); border-radius:999px; font:inherit; font-size:13px; padding:8px 10px; color:var(--ink-soft); max-width:128px;
+  }
+  .btn-main{ background:var(--accent); color:#fff; border:none; padding:11px 24px; font-size:15px; white-space:nowrap; }
+  .btn-main:hover:not(:disabled){ background:#3b382f; }
+  .btn-main:disabled{ opacity:.55; cursor:default; }
+  .status{ font-size:13px; color:var(--ink-soft); margin:8px 4px 0; min-height:1.4em; }
+  .status.error{ color:var(--warn); font-weight:600; }
+
+  /* ── 본문 그리드: 좌 결과 / 우 아레나+단어장 ───── */
+  .grid{
+    display:grid; gap:20px; grid-template-columns:minmax(0,1fr) 340px; grid-template-rows:auto 1fr;
+    grid-template-areas:"main arena" "main vocab";
+  }
+  #mainCol{ grid-area:main; min-width:0; }
+  #arena{ grid-area:arena; align-self:start; }
+  #vocabDetails{ grid-area:vocab; align-self:start; }
+  @media (min-width:921px){ #arena, #vocabDetails{ position:relative; } }
+  @media (max-width:920px){
+    .grid{ grid-template-columns:minmax(0,1fr); grid-template-rows:auto;
+           grid-template-areas:"arena" "main" "vocab"; }
+    .page{ padding:14px 14px 40px; }
+  }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px 18px; }
+  #mainCol > * + *, #resultPanel > * + *{ margin-top:16px; }
+  #resultPanel > .result-head, #resultPanel > #saveMsg{ margin-top:0; }
+  .card h3, .sect h3{ font-size:12px; margin:0 0 10px; color:var(--ink-soft); font-weight:700; letter-spacing:.2px; }
+  .meta{ font-size:12px; color:var(--ink-soft); margin-top:4px; }
+  .meta.warn{ color:var(--warn); }
+
+  /* ── 첫 화면 ───────────────────────────────────── */
+  .empty-card{ text-align:center; padding:34px 20px; }
+  .empty-card .big{ font-size:18px; font-weight:800; margin:0 0 6px; }
+  .empty-card p{ margin:0; color:var(--ink-soft); font-size:14px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:18px; }
+  .chipbtn{ background:var(--bg); border:1px solid var(--line); color:var(--ink); padding:8px 14px; font-weight:600; }
+  .chipbtn:hover{ border-color:var(--ink-soft); }
+
+  /* ── 결과: EN | ES | KO 3카드 ──────────────────── */
+  .result-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .result-head .rtitle{ font-size:13px; color:var(--ink-soft); }
+  .result-head .rtitle b{ color:var(--ink); }
+  .actions{ display:flex; gap:8px; }
+  .btn-sub{ padding:8px 14px; background:var(--surface); border:1.5px solid var(--line); color:var(--ink); font-size:13px; }
+  .btn-sub:hover:not(:disabled){ border-color:var(--ink-soft); }
+  .btn-sub:disabled{ opacity:.5; cursor:default; }
+  #saveMsg{ margin:-6px 4px 8px; min-height:0; text-align:right; }
+  #saveMsg:empty{ display:none; }
+
+  .tri{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  @media (max-width:700px){ .tri{ grid-template-columns:1fr; } }
+  .lcard{ background:var(--surface); border:1px solid var(--line); border-top:5px solid var(--c); border-radius:var(--radius);
+          padding:12px 16px 16px; box-shadow:var(--shadow); min-width:0; }
+  .lcard.src{ background:var(--cbg); }
+  .lhead{ display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:6px; }
+  .ltag{ font-size:12px; font-weight:800; color:var(--c); letter-spacing:.4px; }
+  .badge{ font-size:10.5px; font-weight:700; background:var(--c); color:#fff; border-radius:999px; padding:1px 8px; }
+  .pos{ font-size:11px; border:1px solid var(--line); border-radius:6px; padding:0 6px; margin-left:6px; color:var(--ink-soft); background:var(--surface); font-weight:600; }
+  .ltext{ font-size:22px; font-weight:800; line-height:1.3; overflow-wrap:anywhere; word-break:keep-all; }
+  .lcard.src .ltext{ font-weight:600; font-size:19px; }
+  .alts{ display:flex; flex-wrap:wrap; gap:5px; margin-top:10px; }
+  .alts span{ font-size:12px; background:var(--bg); border:1px solid var(--line); border-radius:999px; padding:1px 9px; color:var(--ink-soft); }
+
+  .skel{ height:26px; border-radius:8px; margin-top:10px; background:linear-gradient(90deg,#eee9da 25%,#f7f3e8 50%,#eee9da 75%); background-size:200% 100%; animation:shimmer 1.2s infinite; }
+  .skel.s{ width:60%; height:16px; }
+  @keyframes shimmer{ to{ background-position:-200% 0; } }
+  #resultPanel.loading:not(.has-prev) .actions{ visibility:hidden; }
+  #resultPanel.loading.has-prev{ opacity:.45; transition:opacity .2s; pointer-events:none; }
+
+  .extra{ font-size:14px; line-height:1.7; }
+  .extra .ex-line b{ display:inline-block; width:30px; font-size:11px; color:var(--ink-soft); }
+  .extra .note{ margin-top:8px; color:var(--ink-soft); font-size:13px; }
+
+  /* ── 문장 요소 대응 ───────────────────────────── */
+  .align-sent{ display:flex; gap:10px; align-items:baseline; font-size:15px; line-height:2.1; }
+  .align-sent .lang{ flex:0 0 32px; font-size:11px; font-weight:800; text-align:center; border-radius:6px; color:#fff; line-height:1.7; }
+  .align-sent .s{ flex:1; min-width:0; overflow-wrap:anywhere; }
+  mark.u{ background:var(--c); color:inherit; border-radius:6px; padding:2px 5px; margin:0 1px; cursor:default; transition:box-shadow .1s; }
+  mark.u.on{ box-shadow:0 0 0 2px var(--c-dark); }
+  table.align{ width:100%; border-collapse:collapse; margin-top:12px; font-size:13.5px; table-layout:fixed; }
+  table.align th{ font-size:11px; color:#fff; padding:4px 8px; text-align:left; }
+  table.align td{ padding:6px 8px; border-top:1px solid var(--line); overflow-wrap:anywhere; vertical-align:top; }
+  table.align td .chip{ background:var(--c); border-radius:6px; padding:1px 6px; }
+  table.align td.none{ color:#d6cfbc; }
+  table.align td.gloss{ color:var(--ink-soft); font-size:12px; width:18%; }
+  table.align tr.on td{ background:#faf6e8; }
+  @media (max-width:560px){ table.align td, table.align th{ padding:5px 4px; font-size:12.5px; } }
+
+  /* ── 사전 / 위키 ──────────────────────────────── */
+  .dict-entry{ font-size:14px; line-height:1.6; margin-bottom:8px; }
+  .dict-entry ol{ margin:2px 0 0; padding-left:22px; }
+  .verify{ font-size:12.5px; margin:0 0 10px; padding:6px 10px; border-radius:8px; }
+  .verify.ok{ color:var(--ko); background:var(--ko-bg); } .verify.no{ color:var(--warn); background:#FBECEC; }
+  .wiki-card{ display:flex; gap:14px; align-items:flex-start; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); }
+  .wiki-card img{ width:104px; height:104px; object-fit:cover; border-radius:10px; border:1px solid var(--line); flex:0 0 auto; background:var(--bg); }
+  .wiki-card .wtxt{ font-size:13px; line-height:1.6; color:var(--ink-soft); }
+  .wiki-card .wtxt b{ color:var(--ink); }
+  .src-link{ font-size:11.5px; color:var(--ink-soft); margin-top:6px; }
+  .src-link a{ color:inherit; }
+
+  /* ── 사이드: 배틀 아레나 ───────────────────────── */
+  .arena{
+    background:linear-gradient(180deg,#F4F0E4 0%,#EAE3CF 100%); border:1px solid var(--line);
+    border-radius:var(--radius); padding:10px 14px 12px; overflow:hidden; box-shadow:var(--shadow);
+  }
+  .arena-top{ display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--ink-soft); min-height:1.5em; }
+  #arenaMsg{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #arenaStreak{ font-weight:700; color:var(--es); white-space:nowrap; }
+  .stage{ position:relative; display:flex; justify-content:space-between; align-items:flex-end; height:164px; margin-top:4px; border-bottom:3px solid #D5CBB1; }
+  .slot{ width:45%; height:100%; display:flex; justify-content:center; align-items:flex-end; }
+  .vs{ position:absolute; left:50%; bottom:64px; transform:translateX(-50%); font-weight:900; font-size:17px; color:#cdc3aa; letter-spacing:1px; }
+  .vs.fight{ color:var(--warn); animation:vsPulse .45s ease-in-out infinite alternate; }
+  @keyframes vsPulse{ from{ transform:translateX(-50%) scale(1); } to{ transform:translateX(-50%) scale(1.35); } }
+  .fighter{ width:100%; max-width:132px; text-align:center; position:relative; padding-bottom:4px; }
+  .fighter img{ width:92px; height:92px; object-fit:contain; filter:drop-shadow(0 4px 3px rgba(0,0,0,.18)); display:block; margin:0 auto; }
+  .slot.left .fighter img{ transform:scaleX(-1); }
+  .fighter img.blend{ mix-blend-mode:multiply; }
+  .fighter .emoji{ font-size:62px; line-height:92px; height:92px; }
+  .hp{ height:7px; background:#d9d2bf; border-radius:999px; overflow:hidden; margin:0 auto 4px; width:84%; }
+  .hp > i{ display:block; height:100%; width:100%; background:hsl(120 55% 45%); transition:width .35s ease, background-color .35s; }
+  .fname{ font-size:12px; font-weight:800; line-height:1.25; overflow-wrap:anywhere; }
+  .fkind{ display:inline-block; font-size:9.5px; font-weight:700; color:#fff; border-radius:5px; padding:0 4px; margin-right:3px; vertical-align:1px; }
+  .fkind.p{ background:#C8453B; } .fkind.d{ background:#2B6A8C; }
+  .dmg{ position:absolute; left:50%; top:8px; font-weight:900; font-size:17px; color:var(--warn); text-shadow:0 1px 0 #fff, 0 0 4px #fff; pointer-events:none; animation:dmgUp .8s ease-out forwards; }
+  @keyframes dmgUp{ from{ transform:translate(-50%,0); opacity:1; } to{ transform:translate(-50%,-34px); opacity:0; } }
+  .slot.left  .fighter.enter{ animation:enterL .7s cubic-bezier(.2,.9,.3,1) both; }
+  .slot.right .fighter.enter{ animation:enterR .7s cubic-bezier(.2,.9,.3,1) both; }
+  @keyframes enterL{ from{ transform:translateX(-170%); opacity:0; } to{ transform:none; opacity:1; } }
+  @keyframes enterR{ from{ transform:translateX(170%); opacity:0; } to{ transform:none; opacity:1; } }
+  .slot.left  .fighter.atk{ animation:lungeL .38s ease-in-out; }
+  .slot.right .fighter.atk{ animation:lungeR .38s ease-in-out; }
+  @keyframes lungeL{ 50%{ transform:translateX(40px); } }
+  @keyframes lungeR{ 50%{ transform:translateX(-40px); } }
+  .fighter.hit img{ animation:hitFx .38s steps(2) 1; }
+  @keyframes hitFx{ 0%,100%{ filter:drop-shadow(0 4px 3px rgba(0,0,0,.18)); } 30%{ filter:brightness(2.4) saturate(0); opacity:.7; } 60%{ opacity:1; } }
+  .slot.left  .fighter.ko{ animation:koL .8s ease-in forwards; }
+  .slot.right .fighter.ko{ animation:koR .8s ease-in forwards; }
+  @keyframes koL{ to{ transform:translate(-90px,70px) rotate(-40deg); opacity:0; } }
+  @keyframes koR{ to{ transform:translate(90px,70px) rotate(40deg); opacity:0; } }
+  .fighter.win{ animation:winHop .55s ease-out 2; }
+  @keyframes winHop{ 50%{ transform:translateY(-16px); } }
+  @media (prefers-reduced-motion:reduce){
+    .fighter, .fighter img, .vs, .dmg, .skel{ animation:none !important; }
+    .hp > i{ transition:none; }
+  }
+  @media (max-width:920px){ .stage{ height:150px; } .fighter img{ width:80px; height:80px; } }
+  @media (max-width:560px){        /* 폰: 아레나가 결과를 밀어내지 않게 컴팩트하게 */
+    .arena{ padding:8px 12px 8px; }
+    .stage{ height:104px; }
+    .fighter{ max-width:96px; }
+    .fighter img{ width:58px; height:58px; }
+    .fighter .emoji{ font-size:40px; line-height:58px; height:58px; }
+    .vs{ bottom:34px; font-size:14px; }
+    .hp{ height:5px; margin-bottom:3px; }
+    .fname{ font-size:11px; }
+    .slot.left  .fighter.atk{ animation-name:lungeLs; } .slot.right .fighter.atk{ animation-name:lungeRs; }
+    @keyframes lungeLs{ 50%{ transform:translateX(24px); } } @keyframes lungeRs{ 50%{ transform:translateX(-24px); } }
+  }
+
+  /* ── 사이드: 단어장 ───────────────────────────── */
+  details.vocab{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:4px 16px 14px; }
+  details.vocab summary{ cursor:pointer; font-weight:800; font-size:14px; padding:12px 0 8px; list-style:none; display:flex; align-items:center; gap:6px; }
+  details.vocab summary::-webkit-details-marker{ display:none; }
+  details.vocab summary::after{ content:"▾"; margin-left:auto; color:var(--ink-soft); }
+  details.vocab:not([open]) summary::after{ content:"▸"; }
+  .vcount{ background:var(--ink); color:#fff; border-radius:999px; font-size:11px; padding:0 8px; font-weight:700; }
+  .vocab-tools{ display:flex; gap:8px; align-items:center; margin:2px 0 8px; }
+  .vocab-tools input{ flex:1; min-width:0; padding:8px 12px; font:inherit; font-size:13px; border:1px solid var(--line); border-radius:999px; background:var(--bg); }
+  #vocabList{ max-height:340px; overflow:auto; }
+  .vocab-item{ display:flex; justify-content:space-between; gap:8px; padding:9px 0; border-top:1px solid var(--line); font-size:13px; }
+  .vocab-item .v-main{ font-weight:700; }
+  .vocab-item .v-sub{ display:block; color:var(--ink-soft); font-size:12px; }
+  .vocab-del{ border:none; background:none; color:var(--ink-soft); font-size:15px; cursor:pointer; }
+  .empty{ font-size:13px; color:var(--ink-soft); text-align:center; padding:10px 0 2px; margin:0; }
+
+  .footer{ margin-top:26px; font-size:11.5px; color:var(--ink-soft); text-align:center; line-height:1.7; }
+  .footer #engineNote{ color:var(--warn); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <div class="brandrow">
+      <h1><span class="dots" aria-hidden="true"><i style="background:var(--en)"></i><i style="background:var(--es)"></i><i style="background:var(--ko)"></i></span>영어·스페인어·한국어 한 줄 사전</h1>
+      <div class="engine"><label for="engineSelect">번역 엔진</label><select id="engineSelect"></select></div>
+    </div>
+    <form class="search" id="lookupForm" autocomplete="off">
+      <label for="mainInput" class="sr-only">단어 또는 문장</label>
+      <input type="text" id="mainInput" maxlength="500" autofocus placeholder="단어나 문장을 입력하세요 — 영어·스페인어·한국어 아무거나">
+      <label for="langSelect" class="sr-only">입력 언어</label>
+      <select id="langSelect">
+        <option value="auto">자동 감지</option>
+        <option value="en">영어로 조회</option>
+        <option value="es">스페인어로 조회</option>
+        <option value="ko">한국어로 조회</option>
+      </select>
+      <button class="btn-main" id="lookupBtn" type="submit">뜻 조회</button>
+    </form>
+    <p class="status" id="statusMsg" role="status" aria-live="polite"></p>
+  </header>
+
+  <div class="grid">
+    <main id="mainCol">
+      <section class="card empty-card" id="emptyState">
+        <p class="big">한 번 입력하면, 세 언어가 한눈에</p>
+        <p>입력한 언어는 자동으로 알아내고, 나머지 두 언어의 뜻과 예문을 보여줘요.</p>
+        <div class="chips" id="exampleChips"></div>
+      </section>
+
+      <section id="resultPanel" style="display:none" aria-live="polite">
+        <div class="result-head">
+          <div class="rtitle" id="resultTitle"></div>
+          <div class="actions">
+            <button class="btn-sub" id="speakBtn" type="button">🔊 발음</button>
+            <button class="btn-sub" id="saveBtn" type="button">⭐ 저장</button>
+          </div>
+        </div>
+        <p class="status" id="saveMsg" role="status" aria-live="polite"></p>
+        <div class="tri" id="resultRows"></div>
+        <div class="card extra" id="extraBox" style="display:none"></div>
+        <div class="card" id="alignBox" style="display:none"></div>
+        <div class="card" id="dictBox" style="display:none"></div>
+      </section>
+    </main>
+
+    <section class="arena" id="arena" aria-hidden="true">
+      <div class="arena-top"><span id="arenaMsg">검색하면 배틀이 시작돼요!</span><span id="arenaStreak"></span></div>
+      <div class="stage" id="stage">
+        <div class="slot left" id="slotL"></div>
+        <div class="vs" id="vsMark">VS</div>
+        <div class="slot right" id="slotR"></div>
+      </div>
+    </section>
+
+    <details class="vocab" id="vocabDetails" open>
+      <summary>⭐ 단어장 <span class="vcount" id="vocabCount">0</span></summary>
+      <div class="vocab-tools">
+        <input type="text" id="vocabFilter" placeholder="단어장 검색" aria-label="단어장 검색">
+        <button class="btn-sub" id="exportBtn" type="button">CSV</button>
+      </div>
+      <div id="vocabList"></div>
+      <p class="empty" id="vocabEmpty">아직 저장한 항목이 없어요.</p>
+    </details>
+  </div>
+
+  <div class="footer">
+    <div id="engineNote"></div>
+    입력한 문장은 선택한 엔진(NVIDIA 또는 MyMemory)의 서버로, 단어 하나를 조회하면 그 단어가 Wiktionary·Wikipedia로 전송됩니다.<br>
+    배틀 연출은 PokeAPI·digi-api.com에서 이름·그림을 불러옵니다(입력 내용은 보내지 않아요). 포켓몬·디지몬은 각 권리자의 상표입니다.<br>
+    기계번역이므로 참고용입니다. 사전·백과 내용은 Wiktionary·Wikipedia(CC BY-SA)에서 가져옵니다. 단어장은 이 브라우저에만 저장됩니다.
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const MAX_CHARS = 500;
+  const MYMEMORY = "https://api.mymemory.translated.net/get";
+  const STORAGE_KEY = "trilingual-vocab-list-v1";
+  const LANGS = ["en","es","ko"];
+  const LANG_LABEL = { en:"영어", es:"스페인어", ko:"한국어" };
+  const LANG_TAG = { en:"EN", es:"ES", ko:"KO" };
+  const LANG_COLOR = { en:"var(--en)", es:"var(--es)", ko:"var(--ko)" };
+  const SPEECH_LOCALE = { en:"en-US", es:"es-ES", ko:"ko-KR" };
+
+  const $ = id => document.getElementById(id);
+  function el(tag, cls, text){
+    const e = document.createElement(tag);
+    if(cls) e.className = cls;
+    if(text != null) e.textContent = text;
+    return e;
+  }
+
+  /* =========================================================
+     판단 규칙 1 — (MyMemory 대체 모드 전용) 언어 자동 감지
+     NVIDIA 엔진은 모델이 직접 입력 언어를 판정한다.
+     DOM을 건드리지 않는 순수 함수.
+  ========================================================= */
+  const ES_WORDS = new Set(["el","la","los","las","un","una","unos","unas","de","del",
+    "que","y","en","es","son","esta","con","para","por","como","mas","pero","se",
+    "su","sus","le","les","yo","tu","ella","nosotros","ellos","ellas","muy",
+    "tambien","porque","cuando","donde","quien","cual","esto","eso","aqui","alli",
+    "hola","gracias","amor","idioma","idiomas","aprender","encanta","nuevo","nueva","me",
+    "agua","casa","gato","perro","libro","comer","beber","hablar","vivir","tiempo"]);
+  const EN_WORDS = new Set(["the","a","an","is","are","was","were","of","in","on","at",
+    "for","to","and","or","but","not","with","this","that","these","those","i","you",
+    "he","she","we","they","very","also","because","when","where","who","which","here",
+    "there","hello","thanks","love","language","languages","learn","learning","new",
+    "water","house","cat","dog","book","eat","drink","speak","live","time"]);
+
+  function detectLanguage(text){
+    if(/[가-힣]/.test(text)) return { lang:"ko", ambiguous:false };
+    const lower = text.toLowerCase();
+    if(/[ñ¿¡]/.test(lower)) return { lang:"es", ambiguous:false };
+    const words = lower.match(/[a-zñáéíóúü]+/g) || [];
+    let es = 0, en = 0;
+    words.forEach(w=>{ if(ES_WORDS.has(w)) es++; if(EN_WORDS.has(w)) en++; });
+    const accent = /[áéíóúü]/.test(lower);
+    if(es === en) return { lang: accent ? "es" : "en", ambiguous:true };
+    return { lang: es > en ? "es" : "en", ambiguous:false };
+  }
+
+  /* =========================================================
+     판단 규칙 2 — 엔진별 응답을 공통 형태로 정리 (DOM 무관)
+     공통 결과: { source:{text,lang,ambiguous}, translations:[{lang,text,alternatives,lowConfidence,pivoted}],
+                 pos, example, note, engine }
+  ========================================================= */
+
+  // --- NVIDIA (로컬 프록시 serve.py 경유 — 키는 서버에만 있다) ---
+  async function lookupNvidia(text, langChoice){
+    let res;
+    try{
+      res = await fetch("/api/lookup", {
+        method:"POST", headers:{ "Content-Type":"application/json" },
+        body: JSON.stringify({ text, source: langChoice })
+      });
+    }catch(e){ throw new Error("로컬 서버(serve.py)에 연결하지 못함"); }
+    let json = null;
+    try{ json = await res.json(); }catch(e){}
+    if(!res.ok) throw new Error((json && json.error) || ("서버 오류 " + res.status));
+    const src = json.source_lang;
+    const targets = LANGS.filter(l => l !== src);
+    return {
+      engine: "NVIDIA " + (json.model || ""),
+      source: { text, lang: src, ambiguous: !!json.ambiguous },
+      translations: targets.map(l => ({
+        lang: l, text: json.translations[l],
+        alternatives: (json.alternatives && json.alternatives[l]) || [],
+        lowConfidence: false, pivoted: false
+      })),
+      pos: json.pos || "", example: json.example || {}, note: json.note || ""
+    };
+  }
+
+  // --- MyMemory (대체 모드) ---
+  // 점수(match)만 믿지 않는다: 입력과 segment가 같은 항목을 우선하고,
+  // 다른 문장의 메모리가 1위인 경우엔 '유사 문장 결과'로 낮은 신뢰 표시한다.
+  function normalizeMyMemory(json, input){
+    if(!json || typeof json !== "object") throw new Error("MyMemory 응답 형식 오류");
+    const status = Number(json.responseStatus);
+    const rd = json.responseData || {};
+    if(json.quotaFinished) throw new Error("MyMemory 오늘 무료 한도를 모두 사용했어요");
+    if(status !== 200) throw new Error("MyMemory 오류: " + (rd.translatedText || json.responseDetails || status));
+    if(typeof rd.translatedText !== "string" || !rd.translatedText.trim())
+      throw new Error("번역 결과가 비어 있어요");
+    const key = input.trim().toLowerCase();
+    const matches = Array.isArray(json.matches) ? json.matches : [];
+    const exact = matches.filter(m => m && typeof m.translation === "string" &&
+                                      String(m.segment || "").trim().toLowerCase() === key)
+                         .sort((a,b)=> (Number(b.match)||0) - (Number(a.match)||0));
+    const best = exact[0];
+    const text = (best ? best.translation : rd.translatedText).trim();
+    const topSeg = matches[0] && String(matches[0].segment || "").trim().toLowerCase();
+    const lowConfidence = !best && (matches.length > 0 && topSeg !== key || !(Number(rd.match) >= 0.5));
+    const alternatives = [];
+    matches.forEach(m=>{
+      const t = m && typeof m.translation === "string" ? m.translation.trim() : "";
+      if(t && t.toLowerCase() !== text.toLowerCase() && !alternatives.some(a => a.toLowerCase() === t.toLowerCase()) && String(m.segment||"").trim().toLowerCase() === key)
+        alternatives.push(t);
+    });
+    return { text, lowConfidence, alternatives: alternatives.slice(0,3) };
+  }
+
+  async function myMemoryCall(text, from, to){
+    const url = `${MYMEMORY}?q=${encodeURIComponent(text)}&langpair=${from}|${to}`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("MyMemory 응답 오류: " + res.status);
+    return normalizeMyMemory(await res.json(), text);
+  }
+
+  // 판단 규칙 3 — 피벗: MyMemory는 ko↔es 직접 번역이 부실해(안녕→annyo) 영어를 거친다.
+  // 단, 중간 영어 결과를 화면에 보여줘 오류 전파를 사용자가 확인할 수 있게 한다.
+  async function lookupMyMemory(text, langChoice){
+    const det = langChoice === "auto" ? detectLanguage(text) : { lang: langChoice, ambiguous:false };
+    const src = det.lang;
+    const targets = LANGS.filter(l => l !== src);
+    let translations;
+    if(src === "en"){
+      const rs = await Promise.all(targets.map(t => myMemoryCall(text, "en", t)));
+      translations = rs.map((r,i)=>({ lang:targets[i], text:r.text, alternatives:r.alternatives,
+                                      lowConfidence:r.lowConfidence, pivoted:false }));
+    }else{
+      const toEn = await myMemoryCall(text, src, "en");
+      const other = targets[1];
+      const viaEn = await myMemoryCall(toEn.text, "en", other);
+      translations = [
+        { lang:"en", text:toEn.text, alternatives:toEn.alternatives, lowConfidence:toEn.lowConfidence, pivoted:false },
+        { lang:other, text:viaEn.text, alternatives:viaEn.alternatives,
+          lowConfidence: viaEn.lowConfidence || toEn.lowConfidence, pivoted:true, via:toEn.text }
+      ];
+    }
+    return { engine:"MyMemory", source:{ text, lang:src, ambiguous:det.ambiguous },
+             translations, pos:"", example:{}, note:"" };
+  }
+
+  /* =========================================================
+     저장소 (localStorage 입출력) — 실패를 숨기지 않고 알린다
+  ========================================================= */
+  function loadVocab(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const list = raw ? JSON.parse(raw) : [];
+      if(!Array.isArray(list)) return [];
+      return list.filter(it => it && it.source && LANGS.includes(it.source.lang) &&
+                               typeof it.source.text === "string" && Array.isArray(it.translations));
+    }catch(e){ return []; }
+  }
+  function saveVocab(list){
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); return true; }
+    catch(e){ return false; }
+  }
+
+  /* =========================================================
+     그리기 (DOM 렌더링) — 모든 문자열은 textContent로만 넣는다 (XSS 방지)
+  ========================================================= */
+  function setStatus(msg, isError){
+    const s = $("statusMsg");
+    s.textContent = msg || "";
+    s.className = "status" + (isError ? " error" : "");
+  }
+
+  // 항상 EN | ES | KO 순서로 놓는다 — 입력 언어가 바뀌어도 눈이 가는 위치가 같다.
+  const LANG_BG = { en:"var(--en-bg)", es:"var(--es-bg)", ko:"var(--ko-bg)" };
+  function langCard(lang){
+    const card = el("div","lcard");
+    card.style.setProperty("--c", LANG_COLOR[lang]);
+    card.style.setProperty("--cbg", LANG_BG[lang]);
+    const head = el("div","lhead");
+    head.appendChild(el("span","ltag", `${LANG_TAG[lang]} · ${LANG_LABEL[lang]}`));
+    card.appendChild(head);
+    return { card, head };
+  }
+
+  function showResultArea(){
+    $("emptyState").style.display = "none";
+    $("resultPanel").style.display = "block";
+  }
+
+  function renderSkeleton(){
+    const host = $("resultRows");
+    host.textContent = "";
+    LANGS.forEach(l=>{
+      const c = langCard(l);
+      c.card.appendChild(el("div","skel"));
+      c.card.appendChild(el("div","skel s"));
+      host.appendChild(c.card);
+    });
+    ["extraBox","alignBox","dictBox"].forEach(id => { $(id).style.display = "none"; });
+    $("resultTitle").textContent = "";
+    $("saveMsg").textContent = "";
+  }
+
+  function renderResult(d){
+    showResultArea();
+    $("saveMsg").textContent = "";
+    const title = $("resultTitle");
+    title.textContent = "";
+    title.appendChild(el("b", null, d.source.text.length > 40 ? d.source.text.slice(0,40) + "…" : d.source.text));
+    title.appendChild(document.createTextNode(` · ${LANG_LABEL[d.source.lang]}로 인식 · ${d.engine.replace("NVIDIA nvidia/", "NVIDIA · ")}`));
+
+    const host = $("resultRows");
+    host.textContent = "";
+    const byLang = {};
+    d.translations.forEach(t => { byLang[t.lang] = t; });
+
+    LANGS.forEach(l=>{
+      const c = langCard(l);
+      const isSrc = l === d.source.lang;
+      const t = byLang[l];
+      if(isSrc){
+        c.card.classList.add("src");
+        c.head.appendChild(el("span","badge","입력"));
+      }
+      const txt = el("div","ltext", isSrc ? d.source.text : t.text);
+      if(isSrc && d.pos) txt.appendChild(el("span","pos", d.pos));
+      c.card.appendChild(txt);
+      if(isSrc && d.source.ambiguous)
+        c.card.appendChild(el("div","meta warn", "입력 언어가 애매해요 — 검색창 옆 언어 선택으로 직접 지정해 보세요."));
+      if(!isSrc){
+        if(t.alternatives && t.alternatives.length){
+          const alts = el("div","alts");
+          t.alternatives.forEach(a => alts.appendChild(el("span", null, a)));
+          c.card.appendChild(alts);
+        }
+        if(t.pivoted)
+          c.card.appendChild(el("div","meta", "영어를 거쳐 번역됨" + (t.via ? ` (중간 영어: "${t.via}")` : "")));
+        if(t.lowConfidence)
+          c.card.appendChild(el("div","meta warn", "⚠ 입력과 정확히 일치하는 번역이 아니에요 (참고용)"));
+      }
+      host.appendChild(c.card);
+    });
+
+    const extra = $("extraBox");
+    extra.textContent = "";
+    const exKeys = LANGS.filter(l => d.example && d.example[l]);
+    if(exKeys.length){
+      extra.appendChild(el("h3", null, "예문"));
+      exKeys.forEach(l=>{
+        const line = el("div","ex-line");
+        line.appendChild(el("b",null, LANG_TAG[l]));
+        line.appendChild(document.createTextNode(d.example[l]));
+        extra.appendChild(line);
+      });
+    }
+    if(d.note) extra.appendChild(el("div","note", "💡 " + d.note));
+    extra.style.display = extra.childNodes.length ? "block" : "none";
+  }
+
+  function vocabLine(item){
+    return item.translations.map(t => `${LANG_TAG[t.lang]} ${t.text}`).join(" · ");
+  }
+
+  function renderVocabList(){
+    const all = loadVocab();
+    const q = $("vocabFilter").value.trim().toLowerCase();
+    const list = q ? all.filter(it => (it.source.text + " " + vocabLine(it)).toLowerCase().includes(q)) : all;
+    const box = $("vocabList");
+    $("vocabCount").textContent = all.length;
+    $("exportBtn").disabled = all.length === 0;
+    box.textContent = "";
+    $("vocabEmpty").style.display = list.length ? "none" : "block";
+    $("vocabEmpty").textContent = all.length ? "검색 결과가 없어요." : "아직 저장한 항목이 없어요.";
+    list.slice().reverse().forEach(item=>{
+      const row = el("div","vocab-item");
+      const left = el("span");
+      left.appendChild(el("span","v-main", `[${LANG_TAG[item.source.lang]}] ${item.source.text}`));
+      left.appendChild(el("span","v-sub", vocabLine(item) + (item.pivoted ? " (영어 경유)" : "")));
+      row.appendChild(left);
+      const del = el("button","vocab-del","✕");
+      del.type = "button";
+      del.setAttribute("aria-label","삭제");
+      del.addEventListener("click", ()=>{
+        saveVocab(loadVocab().filter(x => x.id !== item.id));
+        renderVocabList();
+      });
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  }
+
+  /* =========================================================
+     부가 정보 (결과가 먼저 뜬 뒤 늦게 도착하는 대로 덧붙인다 — 실패해도 본 결과는 그대로)
+     - 문장(공백 포함): 언어 간 요소 대응   - 단어 하나: Wiktionary 정의 + Wikipedia 요약
+  ========================================================= */
+  const isSafeUrl = (u, host) => typeof u === "string" && u.startsWith("https://" + host + "/");
+
+  function fullTexts(d){
+    const t = {}; t[d.source.lang] = d.source.text;
+    d.translations.forEach(x => { t[x.lang] = x.text; });
+    return t;
+  }
+
+  function loadExtras(d){
+    ["alignBox","dictBox"].forEach(id => { const b = $(id); b.textContent = ""; b.style.display = "none"; });
+    if(/\s/.test(d.source.text)){
+      if(d.engine.startsWith("NVIDIA")) loadAlign(d);
+    }else{
+      loadDictionary(d);
+    }
+  }
+
+  async function postJson(url, body){
+    const res = await fetch(url, { method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(body) });
+    let j = null; try{ j = await res.json(); }catch(e){}
+    if(!res.ok) throw new Error((j && j.error) || ("서버 오류 " + res.status));
+    return j;
+  }
+
+  /* ---- 문장 요소 대응 ---- */
+  async function loadAlign(d){
+    const box = $("alignBox");
+    box.style.display = "block";
+    box.textContent = "";
+    box.appendChild(el("h3", null, "문장 요소 대응 — 같은 색끼리 같은 뜻"));
+    const body = el("div", "meta", "대응 분석 중…");
+    box.appendChild(body);
+    try{
+      const r = await postJson("/api/align", { texts: fullTexts(d) });
+      if(currentData !== d) return;
+      renderAlign(box, d, r.units);
+    }catch(err){
+      if(currentData !== d) return;
+      body.className = "meta warn";
+      body.textContent = "대응 분석을 불러오지 못했어요 (" + err.message + ")";
+    }
+  }
+
+  const unitColor = i => `hsl(${(i * 47 + 12) % 360} 75% 86%)`;
+  const unitColorDark = i => `hsl(${(i * 47 + 12) % 360} 55% 48%)`;
+
+  // 문장 안에서 조각의 위치를 찾는다. 같은 조각이 겹치지 않게 이미 쓴 구간은 건너뛴다.
+  function locate(text, units, lang){
+    const taken = [], found = [];
+    units.forEach((u, i)=>{
+      const p = u[lang];
+      if(!p) return;
+      let from = 0, at;
+      while((at = text.indexOf(p, from)) !== -1){
+        if(!taken.some(([a,b]) => at < b && at + p.length > a)){
+          taken.push([at, at + p.length]); found.push({ start:at, end:at + p.length, i }); return;
+        }
+        from = at + 1;
+      }
+    });
+    return found.sort((a,b) => a.start - b.start);
+  }
+
+  function renderAlign(box, d, units){
+    box.textContent = "";
+    box.appendChild(el("h3", null, "문장 요소 대응 — 같은 색끼리 같은 뜻 (칸에 마우스를 올려 보세요)"));
+    const texts = fullTexts(d);
+
+    LANGS.forEach(l=>{
+      const line = el("div", "align-sent");
+      const tag = el("span", "lang", LANG_TAG[l]); tag.style.background = LANG_COLOR[l];
+      line.appendChild(tag);
+      const s = el("span", "s");
+      let pos = 0;
+      locate(texts[l], units, l).forEach(f=>{
+        if(f.start > pos) s.appendChild(document.createTextNode(texts[l].slice(pos, f.start)));
+        const m = el("mark", "u", texts[l].slice(f.start, f.end));
+        m.dataset.u = f.i;
+        m.style.setProperty("--c", unitColor(f.i));
+        m.style.setProperty("--c-dark", unitColorDark(f.i));
+        s.appendChild(m);
+        pos = f.end;
+      });
+      if(pos < texts[l].length) s.appendChild(document.createTextNode(texts[l].slice(pos)));
+      line.appendChild(s);
+      box.appendChild(line);
+    });
+
+    const table = el("table", "align");
+    const head = el("tr");
+    LANGS.forEach(l=>{ const th = el("th", null, LANG_TAG[l]); th.style.background = LANG_COLOR[l]; head.appendChild(th); });
+    head.appendChild(el("th", null, "뜻")); head.lastChild.style.background = "var(--ink-soft)";
+    table.appendChild(head);
+    units.forEach((u, i)=>{
+      const tr = el("tr"); tr.dataset.u = i;
+      LANGS.forEach(l=>{
+        const td = el("td");
+        if(u[l]){
+          const c = el("span", "chip", u[l]); c.style.setProperty("--c", unitColor(i)); td.appendChild(c);
+        }else{ td.className = "none"; td.textContent = "—"; }
+        tr.appendChild(td);
+      });
+      tr.appendChild(el("td", "gloss", u.gloss || ""));
+      table.appendChild(tr);
+    });
+    box.appendChild(table);
+    box.appendChild(el("div", "src-link", "AI가 나눈 대응이라 어색할 수 있어요. 문장에 실제로 있는 조각만 표시합니다."));
+
+    const toggle = (idx, on)=>{
+      box.querySelectorAll(`[data-u="${idx}"]`).forEach(n => n.classList.toggle("on", on));
+    };
+    box.onmouseover = e=>{ const n = e.target.closest("[data-u]"); if(n) toggle(n.dataset.u, true); };
+    box.onmouseout  = e=>{ const n = e.target.closest("[data-u]"); if(n) toggle(n.dataset.u, false); };
+  }
+
+  /* ---- 단어: Wiktionary + Wikipedia ---- */
+  async function loadDictionary(d){
+    const word = d.source.text, lang = d.source.lang;
+    const en = lang === "en" ? null : (d.translations.find(t => t.lang === "en") || {}).text;
+    const isNoun = /noun|명사/i.test(d.pos || "");
+    const wikiTitle = lang === "en" ? word : en;
+    const jobs = [
+      fetchJson(`/api/wiktionary?word=${encodeURIComponent(word)}&lang=${lang}` +
+                (en ? `&check=${encodeURIComponent(en)}` : "")).then(r => ({ wikt:r })).catch(() => null),
+      (isNoun && wikiTitle) ? fetchJson(`/api/wikipedia?title=${encodeURIComponent(wikiTitle)}`)
+                                .then(r => ({ wiki:r })).catch(() => null) : Promise.resolve(null)
+    ];
+    const [a, b] = await Promise.all(jobs);
+    if(currentData !== d) return;
+    const wikt = a && a.wikt, wiki = b && b.wiki;
+    const box = $("dictBox");
+    box.textContent = "";
+    if(wikt && wikt.found){
+      box.appendChild(el("h3", null, `사전 (Wiktionary) — ${LANG_LABEL[lang]} '${word}'`));
+      if(typeof wikt.confirmed === "boolean"){
+        box.appendChild(el("div", "verify " + (wikt.confirmed ? "ok" : "no"), wikt.confirmed
+          ? `✓ 사전 확인됨 — 정의에 영어 번역 '${en}'이(가) 있어요.`
+          : `⚠ 사전 정의에서 '${en}'을(를) 찾지 못했어요. 모델이 다른 표현을 썼거나 틀렸을 수 있어요.`));
+      }
+      wikt.entries.forEach(en_=>{
+        const div = el("div", "dict-entry");
+        div.appendChild(el("b", null, en_.pos));
+        const ol = el("ol");
+        en_.defs.forEach(t => ol.appendChild(el("li", null, t)));
+        div.appendChild(ol);
+        box.appendChild(div);
+      });
+      if(isSafeUrl(wikt.url, "en.wiktionary.org")){
+        const p = el("div", "src-link"); const a_ = el("a", null, "Wiktionary에서 더 보기");
+        a_.href = wikt.url; a_.target = "_blank"; a_.rel = "noopener noreferrer";
+        p.appendChild(a_); box.appendChild(p);
+      }
+    }else if(a){
+      box.appendChild(el("h3", null, "사전 (Wiktionary)"));
+      box.appendChild(el("div", "meta", "Wiktionary에 이 단어 항목이 없어요."));
+    }
+    if(wiki && wiki.found){
+      const card = el("div", "wiki-card");
+      if(wiki.thumbnail && (isSafeUrl(wiki.thumbnail, "upload.wikimedia.org") || isSafeUrl(wiki.thumbnail, "thumb.wikimedia.org"))){
+        const img = el("img"); img.src = wiki.thumbnail; img.alt = wiki.title; img.loading = "lazy";
+        img.referrerPolicy = "no-referrer"; card.appendChild(img);
+      }
+      const t = el("div", "wtxt");
+      t.appendChild(el("b", null, `Wikipedia: ${wiki.title}`));
+      t.appendChild(el("div", null, wiki.extract));
+      const note = el("div", "src-link", "단어와 뜻이 정확히 같지 않을 수 있는 참고 항목이에요. ");
+      if(isSafeUrl(wiki.url, "en.wikipedia.org")){
+        const l = el("a", null, "원문 보기"); l.href = wiki.url; l.target = "_blank"; l.rel = "noopener noreferrer";
+        note.appendChild(l);
+      }
+      t.appendChild(note); card.appendChild(t);
+      box.appendChild(card);
+    }
+    box.style.display = box.childNodes.length ? "block" : "none";
+  }
+
+  async function fetchJson(url){
+    const res = await fetch(url);
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+
+  function csvCell(v){
+    let s = String(v == null ? "" : v);
+    if(/^[=+\-@\t\r]/.test(s)) s = "'" + s;           // 스프레드시트 수식 주입 방지
+    return '"' + s.replace(/"/g,'""') + '"';
+  }
+  function exportCsv(){
+    const list = loadVocab();
+    if(!list.length) return;
+    const rows = [["en","es","ko","입력언어"]];
+    list.forEach(it=>{
+      const m = { [it.source.lang]: it.source.text };
+      it.translations.forEach(t => { m[t.lang] = t.text; });
+      rows.push([m.en, m.es, m.ko, it.source.lang]);
+    });
+    const csv = "﻿" + rows.map(r => r.map(csvCell).join(",")).join("\r\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type:"text/csv;charset=utf-8" }));
+    a.download = "vocab.csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  }
+
+  /* =========================================================
+     엔진 선택 / 이벤트 연결 (조회 흐름 = 판단 규칙 호출 → 그리기 호출)
+  ========================================================= */
+  let currentData = null;
+  let nvidiaAvailable = false;
+  let requestSeq = 0;
+
+  function fillEngineSelect(){
+    const sel = $("engineSelect");
+    sel.textContent = "";
+    if(nvidiaAvailable){
+      const o = el("option", null, "NVIDIA (권장)"); o.value = "nvidia"; sel.appendChild(o);
+    }
+    const o2 = el("option", null, "MyMemory (대체)"); o2.value = "mymemory"; sel.appendChild(o2);
+    sel.value = nvidiaAvailable ? "nvidia" : "mymemory";
+    $("engineNote").textContent = nvidiaAvailable ? ""
+      : "NVIDIA 엔진을 쓰려면 serve.py 로 실행하고 .env 에 NVIDIA_API_KEY 를 설정하세요. (지금은 MyMemory 사용)";
+  }
+
+  async function detectEngines(){
+    try{
+      const r = await fetch("/api/status");
+      const j = await r.json();
+      nvidiaAvailable = !!j.nvidia;
+    }catch(e){ nvidiaAvailable = false; }
+    fillEngineSelect();
+  }
+
+  function startLoading(){
+    const panel = $("resultPanel");
+    showResultArea();
+    if(currentData){ panel.classList.add("has-prev"); }
+    else{ renderSkeleton(); }
+    panel.classList.add("loading");
+  }
+  function stopLoading(){
+    $("resultPanel").classList.remove("loading","has-prev");
+    if(!currentData){                       // 첫 조회가 실패하면 안내 화면으로 되돌린다
+      $("resultPanel").style.display = "none";
+      $("emptyState").style.display = "block";
+    }
+  }
+
+  // 첫 화면 예시 — 눌러서 바로 조회
+  ["agua", "안녕", "I love learning new languages"].forEach(w=>{
+    const b = el("button", "chipbtn", w); b.type = "button";
+    b.addEventListener("click", ()=>{ $("mainInput").value = w; $("langSelect").value = "auto"; $("lookupForm").requestSubmit(); });
+    $("exampleChips").appendChild(b);
+  });
+
+  $("lookupForm").addEventListener("submit", async ev=>{
+    ev.preventDefault();
+    const text = $("mainInput").value.trim();
+    if(!text){ setStatus("단어나 문장을 입력해 주세요.", true); return; }
+    if(text.length > MAX_CHARS){ setStatus(`${MAX_CHARS}자 이하로 입력해 주세요.`, true); return; }
+
+    const langChoice = $("langSelect").value;
+    const engine = $("engineSelect").value;
+    const seq = ++requestSeq;
+    Arena.go();                                     // 검색 1회 = 배틀 1라운드
+    setStatus("조회 중...");
+    $("lookupBtn").disabled = true;
+    startLoading();
+    try{
+      const data = engine === "nvidia"
+        ? await lookupNvidia(text, langChoice)
+        : await lookupMyMemory(text, langChoice);
+      if(seq !== requestSeq) return;
+      currentData = data;
+      renderResult(data);
+      setStatus("");
+      loadExtras(data);
+    }catch(err){
+      if(seq !== requestSeq) return;
+      setStatus("실패: " + err.message, true);
+    }finally{
+      if(seq === requestSeq){ $("lookupBtn").disabled = false; stopLoading(); }
+    }
+  });
+
+  $("saveBtn").addEventListener("click", ()=>{
+    if(!currentData) return;
+    const list = loadVocab();
+    const dupe = list.some(it => it.source.lang === currentData.source.lang &&
+      it.source.text.trim().toLowerCase() === currentData.source.text.trim().toLowerCase());
+    if(dupe){ $("saveMsg").textContent = "이미 저장된 항목이에요."; return; }
+    list.push({
+      id: Date.now() + "-" + Math.random().toString(36).slice(2,7),
+      source: { text: currentData.source.text, lang: currentData.source.lang },
+      translations: currentData.translations.map(t => ({ lang:t.lang, text:t.text, lowConfidence:t.lowConfidence })),
+      pivoted: currentData.translations.some(t => t.pivoted),
+      engine: currentData.engine
+    });
+    if(!saveVocab(list)){
+      $("saveMsg").textContent = "저장하지 못했어요 (브라우저 저장소가 막혀 있거나 가득 참).";
+      $("saveMsg").className = "status error";
+      return;
+    }
+    $("saveMsg").className = "status";
+    $("saveMsg").textContent = "저장했어요.";
+    renderVocabList();
+    $("vocabDetails").open = true;
+  });
+
+  $("speakBtn").addEventListener("click", ()=>{
+    if(!currentData || !("speechSynthesis" in window)) return;
+    const u = new SpeechSynthesisUtterance(currentData.source.text);
+    u.lang = SPEECH_LOCALE[currentData.source.lang];
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  });
+  if(!("speechSynthesis" in window)) $("speakBtn").disabled = true;
+
+  $("vocabFilter").addEventListener("input", renderVocabList);
+  $("exportBtn").addEventListener("click", exportCsv);
+
+  /* =========================================================
+     배틀 아레나 — 검색 1회마다 한 라운드: 등장 > 싸움 > 승부 > (진 쪽) 퇴장
+     이긴 쪽은 자리에 남고, 빈 자리에 새 도전자가 나타난다.
+     데이터: PokeAPI(포켓몬 1025종, 한국어 이름) / digi-api.com(디지몬). 사용자 입력은 전혀 보내지 않는다.
+  ========================================================= */
+  const Arena = (function(){
+    const POKE_MAX = 1025;
+    const reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const slots = { L: $("slotL"), R: $("slotR") };
+    const occupant = { L: null, R: null };     // 슬롯별 { f:fighter, node, hpFill, hp }
+    let pending = 0, running = false, fast = false, nextFighter = null, digiTotal = 0;
+
+    const rand = n => Math.floor(Math.random() * n);
+    const sleep = ms => new Promise(r => setTimeout(r, reduce ? 120 : (fast ? 25 : ms)));
+    const say = t => { $("arenaMsg").textContent = t; };
+
+    async function getJson(url){
+      const c = new AbortController(); const to = setTimeout(() => c.abort(), 8000);
+      try{
+        const r = await fetch(url, { signal:c.signal });
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        return await r.json();
+      } finally { clearTimeout(to); }
+    }
+    // 이미지는 허용된 출처만, 그리고 미리 받아 둔 뒤에 등장시킨다 (깨진 그림이 튀어나오지 않도록)
+    function preload(url){
+      const ok = typeof url === "string" && (url.startsWith("https://raw.githubusercontent.com/PokeAPI/sprites/") ||
+                                             url.startsWith("https://digi-api.com/images/"));
+      if(!ok) return Promise.resolve(false);
+      return new Promise(res=>{
+        const im = new Image(); const to = setTimeout(() => res(false), 8000);
+        im.referrerPolicy = "no-referrer";
+        im.onload = () => { clearTimeout(to); res(true); };
+        im.onerror = () => { clearTimeout(to); res(false); };
+        im.src = url;
+      });
+    }
+
+    async function fetchPokemon(){
+      const id = 1 + rand(POKE_MAX);
+      const [p, s] = await Promise.all([
+        getJson("https://pokeapi.co/api/v2/pokemon/" + id),
+        getJson("https://pokeapi.co/api/v2/pokemon-species/" + id).catch(() => null)
+      ]);
+      const ko = s && (s.names || []).find(n => n.language.name === "ko");
+      const img = (p.sprites.other && p.sprites.other["official-artwork"].front_default) || p.sprites.front_default;
+      return { kind:"p", name: ko ? ko.name : p.name, en: p.name, img,
+               power: p.stats.reduce((a, x) => a + x.base_stat, 0) };
+    }
+    async function fetchDigimon(){
+      if(!digiTotal){
+        const r = await getJson("https://digi-api.com/api/v1/digimon?pageSize=1");
+        digiTotal = (r.pageable && r.pageable.totalElements) || 1000;
+      }
+      const r = await getJson(`https://digi-api.com/api/v1/digimon?page=${rand(digiTotal)}&pageSize=1`);
+      const d = r.content && r.content[0];
+      if(!d) throw new Error("empty");
+      return { kind:"d", name:d.name, en:d.name, img:d.image, power: 250 + rand(350) };  // 디지몬은 능력치 데이터가 없어 무작위
+    }
+    async function makeFighter(){
+      const order = Math.random() < 0.5 ? [fetchPokemon, fetchDigimon] : [fetchDigimon, fetchPokemon];
+      for(const fn of order){
+        try{
+          const f = await fn();
+          f.imgOk = await preload(f.img);
+          if(f.imgOk) return f;
+        }catch(e){ /* 다른 소스로 */ }
+      }
+      return { kind:"p", name:"???", en:"???", img:"", imgOk:false, power:400, emoji:"👾" };   // 오프라인 대비
+    }
+    const prefetch = () => { nextFighter = makeFighter(); };
+
+    function hpColor(p){ return `hsl(${Math.max(0, Math.min(120, p * 1.2))} 60% 45%)`; }
+    function setHp(o, p){ o.hp = p; o.hpFill.style.width = p + "%"; o.hpFill.style.backgroundColor = hpColor(p); }
+
+    function place(side, f){
+      const node = el("div", "fighter");
+      const hp = el("div", "hp"), fill = el("i"); hp.appendChild(fill);
+      node.appendChild(hp);
+      if(f.imgOk){
+        const img = el("img"); img.src = f.img; img.alt = ""; img.referrerPolicy = "no-referrer"; img.decoding = "async";
+        if(f.kind === "d") img.className = "blend";
+        node.appendChild(img);
+      }else node.appendChild(el("div", "emoji", f.emoji || "❓"));
+      const nm = el("div", "fname");
+      nm.appendChild(el("span", "fkind " + f.kind, f.kind === "p" ? "포켓몬" : "디지몬"));
+      nm.appendChild(document.createTextNode(f.name));
+      nm.title = f.en;
+      node.appendChild(nm);
+      slots[side].appendChild(node);
+      const o = { f, node, hpFill: fill, hp: 100 };
+      setHp(o, 100);
+      occupant[side] = o;
+      return o;
+    }
+    function remove(side){
+      const o = occupant[side];
+      if(o && o.node.parentNode) o.node.parentNode.removeChild(o.node);
+      occupant[side] = null;
+    }
+    function pop(o, text){
+      const d = el("span", "dmg", text); o.node.appendChild(d);
+      setTimeout(() => d.remove(), 850);
+    }
+    const addTemp = (node, cls, ms) => { node.classList.add(cls); setTimeout(() => node.classList.remove(cls), ms); };
+    function updateStreak(){
+      const champ = occupant.L || occupant.R;
+      const n = champ && champ.f.streak || 0;
+      $("arenaStreak").textContent = n >= 1 ? `👑 ${champ.f.name} ${n}연승` : "";
+    }
+
+    async function oneRound(){
+      // 1) 빈 자리 확인 — 챔피언이 없으면 먼저 한 명 세운다
+      if(!occupant.L && !occupant.R){
+        const first = await (nextFighter || makeFighter()); nextFighter = null;
+        const o = place("L", first); addTemp(o.node, "enter", 800);
+      }
+      const champSide = occupant.L ? "L" : "R";
+      const chalSide = champSide === "L" ? "R" : "L";
+      const champ = occupant[champSide];
+      setHp(champ, 100);
+
+      // 2) 등장
+      say("도전자를 찾는 중…");
+      const f = await (nextFighter || makeFighter()); nextFighter = null;
+      prefetch();                                   // 다음 라운드용을 미리 받아 둔다
+      const chal = place(chalSide, f);
+      chal.node.classList.add("enter");
+      say(`${f.name} 등장!`);
+      await sleep(900); chal.node.classList.remove("enter");
+
+      // 3) 싸움 — 승자는 종족값(디지몬은 무작위) 비례 확률로 미리 정하고, 연출은 그에 맞춘다
+      const pc = champ.f.power, pf = chal.f.power;
+      const champWins = Math.random() < pc / (pc + pf);
+      const winner = champWins ? champ : chal, loser = champWins ? chal : champ;
+      const wSide = champWins ? champSide : chalSide;
+      $("vsMark").classList.add("fight");
+      say(`${champ.f.name} vs ${chal.f.name} — 싸움!`);
+      const hits = [                                      // 서로 주고받다가 마지막 일격은 항상 승자
+        { a:winner, t:loser,  to:70 },
+        { a:loser,  t:winner, to:82 },
+        { a:winner, t:loser,  to:36 },
+        { a:loser,  t:winner, to:50 + rand(20) },
+        { a:winner, t:loser,  to:0 }
+      ];
+      for(const h of hits){
+        addTemp(h.a.node, "atk", 400);
+        await sleep(190);
+        addTemp(h.t.node, "hit", 400);
+        pop(h.t, "-" + Math.max(1, Math.round(h.t.hp - h.to)));
+        setHp(h.t, h.to);
+        await sleep(420);
+      }
+      $("vsMark").classList.remove("fight");
+
+      // 4) 승부 → 퇴장
+      winner.f.streak = (winner.f.streak || 0) + 1;
+      loser.f.streak = 0;
+      say(`${winner.f.name} 승리!` + (winner.f.streak > 1 ? ` (${winner.f.streak}연승)` : ""));
+      addTemp(winner.node, "win", 1200);
+      await sleep(500);
+      loser.node.classList.add("ko");
+      await sleep(850);
+      remove(wSide === "L" ? "R" : "L");
+      updateStreak();
+      await sleep(250);
+      say(`${winner.f.name}이(가) 다음 도전자를 기다리는 중`);
+    }
+
+    async function loop(){
+      running = true;
+      while(pending > 0){
+        pending--;
+        fast = pending > 0;                         // 대기 중인 검색이 있으면 빨리 감기
+        try{ await oneRound(); }catch(e){ say("배틀 준비 중 문제가 생겼어요 — 다음 검색에서 다시!"); }
+        fast = false;
+      }
+      running = false;
+    }
+
+    return {
+      init(){
+        // 첫 화면부터 챔피언이 서 있게 한다 (이미 라운드가 시작됐다면 다음 도전자로 넘긴다)
+        makeFighter().then(f=>{
+          if(!running && !occupant.L && !occupant.R){
+            const o = place("L", f); addTemp(o.node, "enter", 800);
+            say(`${f.name}이(가) 도전자를 기다리는 중`);
+            prefetch();
+          }else if(!nextFighter) nextFighter = Promise.resolve(f);
+        });
+      },
+      go(){
+        pending = Math.min(pending + 1, 2);
+        if(running) fast = true; else loop();
+      }
+    };
+  })();
+
+  renderVocabList();
+  detectEngines();
+  Arena.init();
+})();
+</script>
+</body>
+</html>
