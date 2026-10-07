@@ -1,0 +1,54 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Unit and server tests (no network, no API key)
+        run: python -m unittest discover -s tests -t . -v
+
+  frontend:
+    name: Frontend syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check ES modules parse
+        run: |
+          mkdir -p /tmp/esm
+          for f in web/js/*.js; do cp "$f" "/tmp/esm/$(basename "${f%.js}").mjs"; done
+          for f in /tmp/esm/*.mjs; do echo "check $f"; node --check "$f"; done
+
+  secrets:
+    name: No API keys committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Scan tracked files for NVIDIA key patterns
+        run: |
+          if git grep -nE 'nvapi-[A-Za-z0-9_-]{20,}'; then
+            echo "::error::An NVIDIA API key pattern was found in tracked files"; exit 1
+          fi
+          if git ls-files | grep -xE '\.env'; then
+            echo "::error::.env must not be tracked"; exit 1
+          fi
+          echo "clean"
