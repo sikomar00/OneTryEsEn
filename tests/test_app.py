@@ -38,7 +38,7 @@ class ServerTest(unittest.TestCase):
     # ── 정적 파일 ────────────────────────────────────
     def test_index_and_assets_have_correct_types(self):
         for path, ctype in [("/", "text/html"), ("/index.html", "text/html"),
-                            ("/css/style.css", "text/css"), ("/js/main.js", "text/javascript")]:
+                            ("/css/theme.css", "text/css"), ("/css/app.css", "text/css"), ("/css/arena.css", "text/css"), ("/js/main.js", "text/javascript")]:
             with self.subTest(path=path):
                 status, ct, data = self.request("GET", path)
                 self.assertEqual(status, 200)
@@ -46,7 +46,8 @@ class ServerTest(unittest.TestCase):
                 self.assertTrue(data)
 
     def test_all_js_modules_are_served(self):
-        for name in ["util", "engines", "vocab", "render", "extras", "arena", "main"]:
+        for name in ["util", "engines", "vocab", "render", "extras", "arena", "main",
+                     "pixel", "pixelize", "sky", "fx", "mascot"]:
             self.assertEqual(self.request("GET", "/js/%s.js" % name)[0], 200, name)
 
     def test_private_files_and_traversal_are_blocked(self):

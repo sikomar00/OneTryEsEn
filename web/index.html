@@ -3,20 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1a1c2c">
 <title>영어·스페인어·한국어 한 줄 사전</title>
-<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="css/theme.css">
+<link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/arena.css">
 </head>
 <body>
+
+<!-- 밤하늘: 별·구름·달·마을 (모양은 js/sky.js 가 만들어 CSS 변수로 심는다) -->
+<div class="sky" aria-hidden="true">
+  <div class="layer stars a"></div>
+  <div class="layer stars b"></div>
+  <div class="layer clouds"></div>
+  <div class="moon"></div>
+  <div class="hills far"></div>
+  <div class="hills near"></div>
+</div>
+
 <div class="page">
 
   <header class="top">
     <div class="brandrow">
-      <h1><span class="dots" aria-hidden="true"><i style="background:var(--en)"></i><i style="background:var(--es)"></i><i style="background:var(--ko)"></i></span>영어·스페인어·한국어 한 줄 사전</h1>
+      <h1 class="logo">
+        <span class="logo-sub" aria-hidden="true"><i class="pill en">EN</i><i class="pill es">ES</i><i class="pill ko">KO</i></span>
+        <span class="logo-big">한 줄 사전</span>
+        <span class="sr-only">영어·스페인어·한국어 한 줄 사전</span>
+      </h1>
       <div class="engine"><label for="engineSelect">번역 엔진</label><select id="engineSelect"></select></div>
     </div>
-    <form class="search" id="lookupForm" autocomplete="off">
+
+    <form class="search win" id="lookupForm" autocomplete="off">
+      <span class="prompt" data-icon="arrow" data-size="24" aria-hidden="true"></span>
       <label for="mainInput" class="sr-only">단어 또는 문장</label>
-      <input type="text" id="mainInput" maxlength="500" autofocus placeholder="단어나 문장을 입력하세요 — 영어·스페인어·한국어 아무거나">
+      <input type="text" id="mainInput" maxlength="500" autofocus placeholder="단어나 문장을 입력하세요">
       <label for="langSelect" class="sr-only">입력 언어</label>
       <select id="langSelect">
         <option value="auto">자동 감지</option>
@@ -24,25 +46,32 @@
         <option value="es">스페인어로 조회</option>
         <option value="ko">한국어로 조회</option>
       </select>
-      <button class="btn-main" id="lookupBtn" type="submit">뜻 조회</button>
+      <button class="btn-main" id="lookupBtn" type="submit"><span data-icon="search" data-size="16"></span><span>뜻 조회</span></button>
     </form>
-    <p class="status" id="statusMsg" role="status" aria-live="polite"></p>
+
+    <div class="guide">
+      <div class="mascot" id="mascot" aria-hidden="true"></div>
+      <div class="bubble" id="bubble" data-kind="idle">
+        <i class="tail" aria-hidden="true"></i>
+        <p id="statusMsg" role="status" aria-live="polite"></p>
+      </div>
+    </div>
   </header>
 
   <div class="grid">
     <main id="mainCol">
       <section class="card empty-card" id="emptyState">
-        <p class="big">한 번 입력하면, 세 언어가 한눈에</p>
+        <p class="big">한 번 입력하면, 세 언어가 한눈에!</p>
         <p>입력한 언어는 자동으로 알아내고, 나머지 두 언어의 뜻과 예문을 보여줘요.</p>
-        <div class="chips" id="exampleChips"></div>
+        <div class="menu" id="exampleChips" role="group" aria-label="예시"></div>
       </section>
 
       <section id="resultPanel" style="display:none" aria-live="polite">
         <div class="result-head">
           <div class="rtitle" id="resultTitle"></div>
           <div class="actions">
-            <button class="btn-sub" id="speakBtn" type="button">🔊 발음</button>
-            <button class="btn-sub" id="saveBtn" type="button">⭐ 저장</button>
+            <button class="btn-sub" id="speakBtn" type="button"><span data-icon="speaker" data-size="16"></span><span>발음</span></button>
+            <button class="btn-sub" id="saveBtn" type="button"><span data-icon="star" data-size="16"></span><span>저장</span></button>
           </div>
         </div>
         <p class="status" id="saveMsg" role="status" aria-live="polite"></p>
@@ -54,33 +83,50 @@
     </main>
 
     <section class="arena" id="arena" aria-hidden="true">
-      <div class="arena-top"><span id="arenaMsg">검색하면 배틀이 시작돼요!</span><span id="arenaStreak"></span></div>
-      <div class="stage" id="stage">
-        <div class="slot left" id="slotL"></div>
-        <div class="vs" id="vsMark">VS</div>
+      <div class="titlebar">
+        <span data-icon="bolt" data-size="16"></span><span>배틀 아레나</span>
+        <span class="streak" id="arenaStreak"></span>
+      </div>
+      <div class="scene" id="scene">
+        <div class="stat" id="statR"></div>
         <div class="slot right" id="slotR"></div>
+        <div class="vs" id="vsMark">VS</div>
+        <div class="slot left" id="slotL"></div>
+        <div class="stat" id="statL"></div>
+      </div>
+      <div class="dialog">
+        <p id="arenaMsg">검색하면 배틀이 시작돼요!</p>
+        <span class="more" data-icon="down" data-size="16"></span>
       </div>
     </section>
 
     <details class="vocab" id="vocabDetails" open>
-      <summary>⭐ 단어장 <span class="vcount" id="vocabCount">0</span></summary>
-      <div class="vocab-tools">
-        <input type="text" id="vocabFilter" placeholder="단어장 검색" aria-label="단어장 검색">
-        <button class="btn-sub" id="exportBtn" type="button">CSV</button>
+      <summary>
+        <span data-icon="book" data-size="16"></span><span>내 단어 도감</span>
+        <span class="lv" id="vocabLevel">LV.1</span>
+        <span class="vcount" id="vocabCount">0</span>
+      </summary>
+      <div class="vbody">
+        <div class="xp" aria-hidden="true"><span id="xpLabel"></span><div class="xp-bar" id="xpBar"></div></div>
+        <div class="vocab-tools">
+          <input type="text" id="vocabFilter" placeholder="단어장 검색" aria-label="단어장 검색">
+          <button class="btn-sub" id="exportBtn" type="button"><span data-icon="disk" data-size="16"></span><span>CSV</span></button>
+        </div>
+        <div id="vocabList"></div>
+        <p class="empty" id="vocabEmpty">아직 저장한 항목이 없어요.</p>
       </div>
-      <div id="vocabList"></div>
-      <p class="empty" id="vocabEmpty">아직 저장한 항목이 없어요.</p>
     </details>
   </div>
 
   <div class="footer">
     <div id="engineNote"></div>
     입력한 문장은 선택한 엔진(NVIDIA 또는 MyMemory)의 서버로, 단어 하나를 조회하면 그 단어가 Wiktionary·Wikipedia로 전송됩니다.<br>
-    배틀 연출은 PokeAPI·digi-api.com에서 이름·그림을 불러옵니다(입력 내용은 보내지 않아요). 포켓몬·디지몬은 각 권리자의 상표입니다.<br>
+    배틀 연출은 PokeAPI·digi-api.com에서 이름·그림을, 폰트는 jsDelivr(Galmuri)에서 불러옵니다(입력 내용은 보내지 않아요). 포켓몬·디지몬은 각 권리자의 상표입니다.<br>
     기계번역이므로 참고용입니다. 사전·백과 내용은 Wiktionary·Wikipedia(CC BY-SA)에서 가져옵니다. 단어장은 이 브라우저에만 저장됩니다.
   </div>
 </div>
 
+<noscript><p style="position:relative;z-index:2;color:#fff;text-align:center;padding:24px">이 앱은 JavaScript 가 필요해요.</p></noscript>
 <script type="module" src="js/main.js"></script>
 </body>
 </html>

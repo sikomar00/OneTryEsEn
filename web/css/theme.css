@@ -1,0 +1,124 @@
+/* ===== 픽셀 테마: 토큰 · 폰트 · 밤하늘 · 도트 부품(창·버튼·말풍선) ===== */
+
+/* Galmuri (한글 픽셀 폰트, SIL OFL 1.1 — github.com/quiple/galmuri). 버전을 고정해 CDN 에서 불러온다. */
+@font-face{
+  font-family:"Galmuri11"; font-weight:400; font-style:normal; font-display:swap;
+  src:url("https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11.woff2") format("woff2");
+}
+@font-face{
+  font-family:"Galmuri11"; font-weight:700; font-style:normal; font-display:swap;
+  src:url("https://cdn.jsdelivr.net/npm/galmuri@2.40.3/dist/Galmuri11-Bold.woff2") format("woff2");
+}
+
+:root{
+  /* Sweetie-16 (GrafxKid, CC0) */
+  --ink:#1a1c2c; --plum:#5d275d; --red:#b13e53; --orange:#ef7d57; --yellow:#ffcd75; --lime:#a7f070;
+  --green:#38b764; --teal:#257179; --navy:#29366f; --blue:#3b5dc9; --sky:#41a6f6; --cyan:#73eff7;
+  --white:#f4f4f4; --mist:#94b0c2; --slate:#566c86; --night:#333c57;
+
+  --paper:#fff6e0; --paper-2:#f5e7c6; --paper-3:#e6d3a3;          /* 따뜻한 종이색 */
+  --en:#41a6f6; --es:#ef7d57; --ko:#38b764;                       /* 언어 색 (띠·배지 바탕) */
+  --en-ink:#3b5dc9; --es-ink:#b13e53; --ko-ink:#257179;           /* 종이 위 글자용 어두운 언어 색 */
+  --en-bg:#e6f2fd; --es-bg:#ffeadf; --ko-bg:#e6f6e8;
+  --ink-soft:var(--slate);
+
+  --px:4px;                                                         /* 도트 한 칸 */
+  --font:"Galmuri11","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR",monospace;
+}
+
+*{ box-sizing:border-box; }
+html{ background:var(--ink); -webkit-text-size-adjust:100%; }
+body{
+  margin:0; min-height:100vh; color:var(--ink);
+  font-family:var(--font); font-size:14px; line-height:1.6;
+  word-break:keep-all; overflow-wrap:break-word;                     /* 한글은 단어 단위로 줄바꿈 */
+  -webkit-font-smoothing:none; font-smooth:never; text-rendering:optimizeSpeed;
+}
+.sr-only{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+img, canvas, svg{ image-rendering:pixelated; }
+:focus-visible{ outline:4px dashed var(--yellow); outline-offset:4px; }
+::selection{ background:var(--yellow); color:var(--ink); }
+
+/* ── 밤하늘 (고정 배경) ─────────────────────────── */
+.sky{
+  position:fixed; inset:0; z-index:-1; pointer-events:none; overflow:hidden;
+  background:linear-gradient(#1a1c2c 0 24%, #1f2548 24% 44%, #29366f 44% 64%, #2f4392 64% 82%, #3b5dc9 82%);
+}
+.sky .layer{ position:absolute; inset:0; }
+.sky .stars{ background-repeat:repeat; background-size:480px 480px; }
+.sky .stars.a{ background-image:var(--stars-a); animation:twinkleA 3.2s steps(1) infinite; }
+.sky .stars.b{ background-image:var(--stars-b); animation:twinkleB 3.2s steps(1) infinite; }
+@keyframes twinkleA{ 0%{ opacity:1; } 50%{ opacity:.2; } }
+@keyframes twinkleB{ 0%{ opacity:.2; } 50%{ opacity:1; } }
+.sky .clouds{
+  background:var(--clouds) repeat-x 0 16vh / 1024px 192px;
+  animation:drift 260s steps(256) infinite;                         /* 4px 씩 끊어서 흐른다 */
+}
+@keyframes drift{ to{ background-position-x:-1024px; } }
+.sky .moon{ position:absolute; left:clamp(300px, 56vw, 1100px); top:26px; width:88px; height:88px;
+  background:var(--moon) no-repeat center / 100% 100%; }
+@media (max-width:920px){ .sky .moon{ left:auto; right:4vw; top:10px; width:66px; height:66px; } }
+.sky .hills{ position:absolute; left:0; right:0; bottom:0; background-repeat:repeat-x; background-position:left bottom; }
+.sky .hills.far{ height:160px; background-image:var(--hills-far); background-size:960px 160px; }
+.sky .hills.near{ height:120px; background-image:var(--hills-near); background-size:960px 120px; }
+
+/* ── 창(window): 모서리가 깎인 4px 테두리 + 안쪽 하이라이트 + 딱딱한 그림자 ── */
+.win, .card, .lcard, .search, .arena, details.vocab, .bubble, .fstat{
+  --edge:var(--ink);
+  position:relative; background:var(--paper); color:var(--ink);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--edge),
+    0 var(--px) 0 0 var(--edge),
+    calc(var(--px) * -1) 0 0 0 var(--edge),
+    var(--px) 0 0 0 var(--edge),
+    inset 0 var(--px) 0 0 rgba(255,255,255,.65),
+    inset 0 calc(var(--px) * -1) 0 0 rgba(26,28,44,.10),
+    calc(var(--px) * 2) calc(var(--px) * 2) 0 0 rgba(10,12,28,.5);
+}
+
+/* ── 도트 버튼 ─────────────────────────────────── */
+button{ font:inherit; color:inherit; }
+.btn-main, .btn-sub, .menu-item, .vocab-del{ border:0; border-radius:0; cursor:pointer; }
+.btn-main, .btn-sub{
+  --edge:var(--ink);
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  margin:var(--px); padding:10px 18px; font-weight:700; color:var(--ink); background:var(--yellow);
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--edge),
+    0 var(--px) 0 0 var(--edge),
+    calc(var(--px) * -1) 0 0 0 var(--edge),
+    var(--px) 0 0 0 var(--edge),
+    inset 0 var(--px) 0 0 rgba(255,255,255,.6),
+    inset 0 calc(var(--px) * -1) 0 0 rgba(26,28,44,.28),
+    calc(var(--px) * 2) calc(var(--px) * 2) 0 0 rgba(10,12,28,.5);
+}
+.btn-sub{ background:var(--paper-2); padding:8px 14px; font-size:13px; }
+.btn-main:hover:not(:disabled), .btn-sub:hover:not(:disabled){ filter:brightness(1.07); }
+.btn-main:active:not(:disabled), .btn-sub:active:not(:disabled){
+  transform:translate(var(--px), var(--px));
+  box-shadow:
+    0 calc(var(--px) * -1) 0 0 var(--edge), 0 var(--px) 0 0 var(--edge),
+    calc(var(--px) * -1) 0 0 0 var(--edge), var(--px) 0 0 0 var(--edge),
+    inset 0 var(--px) 0 0 rgba(26,28,44,.25);
+}
+.btn-main:disabled, .btn-sub:disabled{ filter:grayscale(1); opacity:.55; cursor:default; }
+
+/* ── 도트 아이콘 ───────────────────────────────── */
+.pxi{ display:inline-block; line-height:0; vertical-align:-3px; flex:none; }
+.pxi svg{ display:block; }
+
+/* ── 말풍선·대화 ───────────────────────────────── */
+.bubble{ padding:10px 14px; min-height:44px; display:flex; align-items:center; font-size:13px; }
+.bubble[data-kind="busy"]{ background:#fff0b8; }
+.bubble[data-kind="ok"]{ background:#e2f8d4; }
+.bubble[data-kind="error"]{ background:#ffdcd9; color:var(--red); }
+.bubble[data-kind="busy"] p::after{ content:attr(data-dots); }         /* 생각 중 … 점은 JS 가 하나씩 늘린다 */
+@keyframes blink{ 50%{ opacity:0; } }
+
+/* ── 별가루 (효과) ─────────────────────────────── */
+.spark{ position:absolute; z-index:20; pointer-events:none; }
+
+/* ── 움직임 줄이기 ─────────────────────────────── */
+@media (prefers-reduced-motion:reduce){
+  *, *::before, *::after{ animation:none !important; transition:none !important; }
+}
