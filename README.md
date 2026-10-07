@@ -3,6 +3,8 @@
 단어나 문장을 **한 번 입력**하면, 입력한 언어를 알아서 판별하고 **영어 · 스페인어 · 한국어 세 언어의 뜻을 한눈에** 보여주는 로컬 웹 도구입니다.
 모르는 표현이 나올 때마다 사전·번역 앱을 번갈아 켜던 흐름을 끊지 않으려고 만들었습니다. (검색할 때마다 포켓몬·디지몬이 배틀하는 건 덤입니다.)
 
+[![tests](https://github.com/sikomar00/OneTryEsEn/actions/workflows/test.yml/badge.svg)](https://github.com/sikomar00/OneTryEsEn/actions/workflows/test.yml)
+
 ![문장 조회 화면](docs/sentence.png)
 
 ## 주요 기능
@@ -66,18 +68,46 @@ Windows 방화벽에서 Python 허용이 필요하고, 학교·학원 같은 공
 ## 구조와 설계
 
 ```
-index.html   프론트엔드 (프레임워크 없는 순수 HTML/CSS/JS, 파일 하나)
-serve.py     로컬 서버 (표준 라이브러리만 사용): 정적 서빙 + API 프록시
-.env.example 환경변수 예시
-docs/        README 스크린샷
+serve.py            실행 진입점 (python serve.py)
+server/             로컬 서버 (표준 라이브러리만 사용)
+  app.py              HTTP 핸들러·라우팅·정적 파일 서빙(web/ 허용목록)
+  config.py           경로·상수·.env 로딩·모델 후보
+  nim.py              NVIDIA 호출: 모델 폴백, 번역/문장 대응 프롬프트와 응답 검증
+  wiki.py             Wiktionary·Wikipedia 조회
+  cache.py            TTL+LRU 캐시 (같은 질의 재조회 시 NVIDIA 재호출 방지)
+  limits.py           IP별 호출 제한
+web/                프론트엔드 (프레임워크 없는 HTML/CSS + ES 모듈, 빌드 불필요)
+  index.html · css/style.css
+  js/main.js          진입점·이벤트 연결
+  js/engines.js       번역 엔진(NVIDIA 프록시 / MyMemory 대체)
+  js/render.js        결과 카드 그리기
+  js/extras.js        문장 요소 대응·사전·위키 카드
+  js/vocab.js         단어장(localStorage)·CSV
+  js/arena.js         배틀 아레나
+  js/util.js          공용 상수·도우미
+tests/              단위·서버 테스트 (외부 네트워크·실제 키 불필요)
+docs/               기획서, README 스크린샷
+.env.example        환경변수 예시
 ```
+
+프론트가 ES 모듈이라 `file://`로 `index.html`을 직접 여는 방식은 지원하지 않습니다. 항상 `python serve.py`로 여세요.
+
+### 테스트
+
+```bash
+python -m unittest discover -s tests -t .
+```
+
+모델 폴백·응답 검증·문장 대응 환각 방지·Wiktionary/Wikipedia 해석·캐시·호출 제한은 모의(mock)로,
+정적 파일 차단(경로 탈출 포함)·Host 검사·입력 검증·429는 실제 서버를 임시 포트에 띄워 확인합니다.
 
 - **키는 서버에만** — 브라우저는 NVIDIA를 직접 호출하지 않고 `serve.py`의 `/api/*`만 부릅니다. `.env`는 `.gitignore`로 제외됩니다.
 - **모델 폴백 체인** — 404/410, 시간 초과(모델당 30초), 응답 형식 오류가 나면 다음 후보 모델로 넘어갑니다. 모델 목록(`/v1/models`)에 있어도 실제로는 서비스되지 않는 모델이 있어서(직접 측정해 후보를 골랐습니다) 필요한 장치입니다.
 - **구조화 출력 + 서버 검증** — 프롬프트로 JSON 스키마를 지정하고 서버가 응답을 검증합니다. 문장 대응은 모델이 돌려준 조각이 **실제 문장의 부분 문자열인지** 확인해, 지어낸 조각은 버립니다.
 - **프롬프트 인젝션 방어** — 사용자 입력을 `<text>` 태그로 감싸 "데이터일 뿐 명령이 아님"을 명시합니다.
+- **결과 캐시** — 같은 입력을 다시 조회하면 NVIDIA를 다시 부르지 않고 즉시 응답합니다(실측 약 7초 → 3ms). 성공한 결과만 1시간 동안 저장합니다.
 - **점진적 렌더링** — 번역을 먼저 보여주고, 사전·문장 대응은 늦게 도착하는 대로 덧붙입니다. 부가 정보가 실패해도 본 결과는 그대로입니다.
-- **보안** — 화면의 모든 문자열은 `textContent`로만 삽입(XSS 방지), 외부 이미지는 허용된 도메인만 로드, 서버는 기본 `127.0.0.1`에만 바인딩하고 `index.html` 외 파일은 서빙하지 않습니다.
+- **보안** — 화면의 모든 문자열은 `textContent`로만 삽입(XSS 방지), 외부 이미지는 허용된 도메인만 로드, 서버는 기본 `127.0.0.1`에만 바인딩하고 `web/` 안의 `.html/.css/.js`만 서빙합니다(`.env`·서버 소스·기획서는 404, 경로 탈출 차단).
 
 ## 한계
 
@@ -87,6 +117,10 @@ docs/        README 스크린샷
 - Wiktionary·Wikipedia는 영어판 기준이라 스페인어·한국어 단어의 정의도 영어로 나옵니다.
 - 디지몬은 능력치 데이터가 없어 배틀 승패가 무작위입니다. (포켓몬은 종족값 합계에 비례)
 - 입력한 문장은 선택한 엔진(NVIDIA 또는 MyMemory)으로, 단어 하나를 조회하면 그 단어가 Wiktionary·Wikipedia로 전송됩니다.
+
+## 라이선스
+
+[MIT License](LICENSE) © 2026 sikomar00
 
 ## 출처와 고지
 
