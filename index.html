@@ -1105,8 +1105,16 @@
   })();
 
   renderVocabList();
-  detectEngines();
   Arena.init();
+  // 주소로 바로 조회: /?q=agua  (선택: &lang=en|es|ko) — 링크 공유용
+  detectEngines().then(()=>{
+    const qp = new URLSearchParams(location.search);
+    const q = (qp.get("q") || "").trim().slice(0, MAX_CHARS);
+    if(!q) return;
+    $("mainInput").value = q;
+    if(LANGS.includes(qp.get("lang"))) $("langSelect").value = qp.get("lang");
+    $("lookupForm").requestSubmit();
+  });
 })();
 </script>
 </body>
